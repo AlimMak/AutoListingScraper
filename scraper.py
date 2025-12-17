@@ -1,4 +1,5 @@
 import requests
+import csv
 from bs4 import BeautifulSoup
 
 # def scrape():
@@ -22,9 +23,7 @@ from bs4 import BeautifulSoup
 
 
 
-url = "https://www.cargurus.com/Cars/l-Used-BMW-M3-d390"
-response = requests.get(url)
-soup = BeautifulSoup(response.text, 'html.parser')
+
 
 
 # - Year/Model tag: `h4`
@@ -35,8 +34,23 @@ soup = BeautifulSoup(response.text, 'html.parser')
 # firstCar = soup.find('h4')
 # print(firstCar.text)
 
+url = "https://www.cargurus.com/Cars/l-Used-BMW-M3-d390"
+response = requests.get(url)
+soup = BeautifulSoup(response.text, 'html.parser')
+
 allCars = soup.find_all('h4')
-for car in allCars:
-    text = car.text.strip()  
-    if text[0:4].isdigit():  
-        print(text)
+
+
+with open('listings.csv', 'w', newline='') as file:
+    writer = csv.writer(file)
+
+    writer.writerow(['Year and Model'])
+
+    for car in allCars:
+        text = car.text.strip()  
+        if text[0:4].isdigit():  
+            writer.writerow([text])
+    
+print("Grabbed Listings!")
+
+
