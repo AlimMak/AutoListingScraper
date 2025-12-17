@@ -36,5 +36,7 @@ soup = BeautifulSoup(response.text, 'html.parser')
 # print(firstCar.text)
 
 allCars = soup.find_all('h4')
-for Car in allCars:
-    print(Car.text)
+for car in allCars:
+    text = car.text.strip()  
+    if text[0:4].isdigit():  
+        print(text)
