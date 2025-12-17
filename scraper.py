@@ -50,6 +50,14 @@ with open('listings.csv', 'w', newline='') as file:
         text = car.text.strip()  
         if text[0:4].isdigit():  
             writer.writerow([text])
+
+
+    writer.writerow(['Price'])
+
+    for car in allCars:
+        text = car.text.strip()
+        if "$" in text and text[1].isdigit():
+            writer.writerow([text])
     
 print("Grabbed Listings!")
 
