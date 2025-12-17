@@ -40,25 +40,27 @@ soup = BeautifulSoup(response.text, 'html.parser')
 
 allCars = soup.find_all('h4')
 
+cars = []
+prices = []
+
+for car in allCars:
+    text = car.text.strip()
+
+    if text[0:4].isdigit():
+        cars.append(text)
+    elif "$" in text and len(text) > 0 and text.replace('$','').replace(',','').replace(' ','')[0].isdigit():
+        prices.append(text)
 
 with open('listings.csv', 'w', newline='') as file:
     writer = csv.writer(file)
 
-    writer.writerow(['Year and Model'])
+    writer.writerow(['Year and Model', 'Price'])
 
-    for car in allCars:
-        text = car.text.strip()  
-        if text[0:4].isdigit():  
-            writer.writerow([text])
+    for i in range(len(cars)):
+        if i < len(prices):
+            writer.writerow([cars[i], prices[i]])  
 
 
-    writer.writerow(['Price'])
-
-    for car in allCars:
-        text = car.text.strip()
-        if "$" in text and text[1].isdigit():
-            writer.writerow([text])
-    
 print("Grabbed Listings!")
 
 
