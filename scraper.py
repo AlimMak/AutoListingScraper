@@ -1,21 +1,40 @@
 import requests
 from bs4 import BeautifulSoup
 
-def scrape():
+# def scrape():
 
-    url =  'https://www.cargurus.com/Cars/l-Used-BMW-M3-d390'
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, 'html.parser')
-    print(soup)
+#     url =  'https://www.cargurus.com/Cars/l-Used-BMW-M3-d390'
+#     response = requests.get(url)
+#     soup = BeautifulSoup(response.text, 'html.parser')
+#     print(soup)
 
-    title = soup.select_one('h1').text
-    text = soup.select_one('p').text
-    link = soup.select_one('a').get('href')
+#     title = soup.select_one('h1').text
+#     text = soup.select_one('p').text
+#     link = soup.select_one('a').get('href')
 
-    print(title)
-    print(text)
-    print(link)
+#     print(title)
+#     print(text)
+#     print(link)
 
 
-if __name__ == '__main__':
-    scrape()
+# if __name__ == '__main__':
+#     scrape()
+
+
+
+url = "https://www.cargurus.com/Cars/l-Used-BMW-M3-d390"
+response = requests.get(url)
+soup = BeautifulSoup(response.text, 'html.parser')
+
+
+# - Year/Model tag: `h4`
+# - Year/Model class: `_1p-k0 _-3wke _title_omo0s_1 _truncate_omo0s_12`
+# - Price tag: `h4`
+# - Price class: `_1p-k0 tPVlJ _priceText_15az9_97`
+
+# firstCar = soup.find('h4')
+# print(firstCar.text)
+
+allCars = soup.find_all('h4')
+for Car in allCars:
+    print(Car.text)
