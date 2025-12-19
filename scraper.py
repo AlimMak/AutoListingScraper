@@ -1,30 +1,147 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import Select, WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.action_chains import ActionChains
 from bs4 import BeautifulSoup
 import csv
 import time
+import random
+
+def human_scroll_down(driver, distance=None):
+    """Scroll like a human - smooth with variable speed"""
+    if distance is None:
+        distance = random.randint(300, 700)
+    
+    current_pos = driver.execute_script("return window.pageYOffset;")
+    target_pos = current_pos + distance
+    
+    scroll_steps = random.randint(40, 60)
+    
+    for i in range(scroll_steps):
+        if i < 10 or i > scroll_steps - 10:
+            step = distance / scroll_steps * 0.5  
+        else:
+            step = distance / scroll_steps * 1.2  
+            
+        driver.execute_script(f"window.scrollBy(0, {step});")
+        time.sleep(random.uniform(0.01, 0.03)) 
+    
+    
+    time.sleep(random.uniform(0.3, 0.7))
+
+def human_scroll_to_element(driver, element):
+    """Scroll to element like a human would"""
+    y = element.location['y']
+    current_y = driver.execute_script("return window.pageYOffset;")
+    distance = y - current_y - 200  # Stop a bit before element
+    
+    if distance > 0:
+
+        while distance > 0:
+            chunk = min(distance, random.randint(400, 600))
+            human_scroll_down(driver, chunk)
+            distance -= chunk
+            time.sleep(random.uniform(0.1, 0.3))
+
+def random_mouse_movement(driver):
+    """Move mouse randomly like a human browsing"""
+    try:
+        elements = driver.find_elements(By.TAG_NAME, "div")[:20]
+        if elements:
+            random_elem = random.choice(elements)
+            ActionChains(driver).move_to_element(random_elem).perform()
+            time.sleep(random.uniform(0.1, 0.3))
+    except:
+        pass
 
 driver = webdriver.Chrome()
 all_listings = []
 
 url = "https://www.cargurus.com/Cars/l-Used-BMW-M3-d390"
+print("Opening CarGurus...")
 driver.get(url)
-time.sleep(5)
+time.sleep(random.uniform(3, 5))
 
-for page_num in range(1, 3):
+random_mouse_movement(driver)
+time.sleep(1)
+
+
+try:
+    print("\nLooking for distance dropdown...")
+    
+    human_scroll_down(driver, 200)
+    time.sleep(random.uniform(1, 2))
+    
+    dropdown_element = None
+    try:
+        dropdown_element = driver.find_element(By.CSS_SELECTOR, "select[aria-label='Distance from me']")
+        print("Found dropdown!")
+    except:
+        try:
+            dropdown_element = driver.find_element(By.CSS_SELECTOR, "select.uHLXM")
+        except:
+            print("Couldn't find dropdown")
+    
+    if dropdown_element:
+        ActionChains(driver).move_to_element(dropdown_element).perform()
+        time.sleep(random.uniform(0.5, 1))
+        
+        distance_dropdown = Select(dropdown_element)
+        print("Selecting Nationwide...")
+        distance_dropdown.select_by_value("50000")
+        
+        print("[OK] Distance set to Nationwide!")
+        print("Waiting for page to reload...")
+        time.sleep(random.uniform(4, 6))
+        
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-testid='srp-listing-tile']"))
+        )
+        print("Page reloaded!\n")
+        time.sleep(random.uniform(2, 3))
+        
+except Exception as e:
+    print(f"Error changing distance: {e}")
+
+for page_num in range(1, 11):
+    print(f"\n{'='*50}")
     print(f"Scraping page {page_num}...")
+    print(f"{'='*50}")
+    
+    driver.execute_script("window.scrollTo(0, 0);")
+    time.sleep(random.uniform(1, 2))
+    
+    try:
+        WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-testid='srp-listing-tile']"))
+        )
+    except:
+        print("[X] Listings took too long to load")
+        break
     
     html = driver.page_source
     soup = BeautifulSoup(html, 'html.parser')
     
     listings = soup.find_all('div', attrs={'data-testid': 'srp-listing-tile'})
-    print(f"  Found {len(listings)} listings")
+    print(f"Found {len(listings)} total listings on page")
     
+    if len(listings) == 0:
+        print("[X] No listings found")
+        break
+    
+    print("Browsing through listings...")
+    for _ in range(random.randint(2, 4)):
+        human_scroll_down(driver)
+        if random.random() < 0.3:
+            random_mouse_movement(driver)
+    
+    time.sleep(random.uniform(1, 2))
+    
+    scraped_count = 0
     for listing in listings:
         title_tag = listing.find(attrs={'data-cg-ft': 'srp-listing-blade-title'})
         price_tag = listing.find(attrs={'data-cg-ft': 'srp-listing-blade-price'})
-        
-
         location_span = listing.find('span', string=lambda text: text and ',' in text)
         
         if title_tag and price_tag:
@@ -32,37 +149,74 @@ for page_num in range(1, 3):
             price = price_tag.text.strip()
             location = location_span.text.strip() if location_span else 'N/A'
             
+            if "Home delivery from" in location or "/mo est." in location:
+                continue
+            
             all_listings.append({
                 'title': title,
                 'price': price,
                 'location': location
             })
+            scraped_count += 1
             print(f"  [+] {title} - {price} - {location}")
     
+    print(f"\nScraped {scraped_count} valid listings from this page")
+    print(f"Total so far: {len(all_listings)}")
+    
     try:
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(2)
+        print("\nScrolling to bottom...")
+        
+        viewport_height = driver.execute_script("return window.innerHeight")
+        total_height = driver.execute_script("return document.body.scrollHeight")
+        current = driver.execute_script("return window.pageYOffset;")
+        
+        while current < total_height - viewport_height:
+            human_scroll_down(driver)
+            current = driver.execute_script("return window.pageYOffset;")
+            
+            if random.random() < 0.2: 
+                driver.execute_script(f"window.scrollBy(0, -{random.randint(50, 150)});")
+                time.sleep(random.uniform(0.3, 0.6))
+        
+        time.sleep(random.uniform(1, 2))
         
         all_buttons = driver.find_elements(By.TAG_NAME, "button")
+        
         next_button = None
         for btn in all_buttons:
-            if "next page" in btn.text.lower():
-                next_button = btn
-                break
+            try:
+                if "next page" in btn.text.lower():
+                    next_button = btn
+                    break
+            except:
+                continue
         
         if next_button:
-            driver.execute_script("arguments[0].scrollIntoView(true);", next_button)
-            time.sleep(1)
+            is_disabled = next_button.get_attribute("disabled")
+            if is_disabled:
+                print("Reached last page!")
+                break
+            
+            ActionChains(driver).move_to_element(next_button).perform()
+            time.sleep(random.uniform(0.5, 1))
+            
+            print("Clicking next page...")
             driver.execute_script("arguments[0].click();", next_button)
-            print("  Clicked next page!")
-            time.sleep(5)
+            
+            wait_time = random.uniform(5, 8)
+            print(f"Waiting {wait_time:.1f}s for next page...")
+            time.sleep(wait_time)
         else:
-            print("  No next button found!")
+            print("No next button found")
             break
+            
     except Exception as e:
         print(f"Error: {e}")
         break
 
+print(f"\n{'='*50}")
+print("Scraping complete!")
+print(f"{'='*50}")
 driver.quit()
 
 with open('listings.csv', 'w', newline='', encoding='utf-8') as file:
@@ -72,4 +226,5 @@ with open('listings.csv', 'w', newline='', encoding='utf-8') as file:
     for listing in all_listings:
         writer.writerow([listing['title'], listing['price'], listing['location']])
 
-print(f"\nDone! Got {len(all_listings)} listings!")
+print(f"\n[OK] Done! Got {len(all_listings)} listings saved to listings.csv!")
+      
