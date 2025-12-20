@@ -25,9 +25,9 @@ def human_scroll_down(driver, distance=None):
             step = distance / scroll_steps * 1.2  
             
         driver.execute_script(f"window.scrollBy(0, {step});")
-        time.sleep(random.uniform(0.01, 0.03)) 
+        time.sleep(random.uniform(0.05, 0.1))  # SLOWER: was 0.01-0.03
     
-    time.sleep(random.uniform(0.3, 0.7))
+    time.sleep(random.uniform(0.5, 1.0))  # LONGER PAUSE: was 0.3-0.7
 
 def random_mouse_movement(driver):
     """Move mouse randomly like a human browsing"""
@@ -36,7 +36,7 @@ def random_mouse_movement(driver):
         if elements:
             random_elem = random.choice(elements)
             ActionChains(driver).move_to_element(random_elem).perform()
-            time.sleep(random.uniform(0.1, 0.3))
+            time.sleep(random.uniform(0.3, 0.6))  # LONGER: was 0.1-0.3
     except:
         pass
 
@@ -46,16 +46,17 @@ all_listings = []
 url = "https://www.cargurus.com/Cars/l-Used-BMW-M3-d390"
 print("Opening CarGurus...")
 driver.get(url)
-time.sleep(random.uniform(3, 5))
+time.sleep(random.uniform(5, 8))  # LONGER: was 3-5
 
+# Act like reading the page
 random_mouse_movement(driver)
-time.sleep(1)
+time.sleep(random.uniform(2, 3))  # LONGER: was 1
 
 try:
     print("\nLooking for distance dropdown...")
     
     human_scroll_down(driver, 200)
-    time.sleep(random.uniform(1, 2))
+    time.sleep(random.uniform(2, 3))  # LONGER: was 1-2
     
     dropdown_element = None
     try:
@@ -68,8 +69,9 @@ try:
             print("Couldn't find dropdown")
     
     if dropdown_element:
+        # Hover before clicking
         ActionChains(driver).move_to_element(dropdown_element).perform()
-        time.sleep(random.uniform(0.5, 1))
+        time.sleep(random.uniform(1, 2))  # LONGER: was 0.5-1
         
         distance_dropdown = Select(dropdown_element)
         print("Selecting Nationwide...")
@@ -77,33 +79,34 @@ try:
         
         print("[OK] Distance set to Nationwide!")
         print("Waiting for page to reload...")
-        time.sleep(random.uniform(4, 6))
+        time.sleep(random.uniform(6, 10))  # MUCH LONGER: was 4-6
         
-        WebDriverWait(driver, 10).until(
+        WebDriverWait(driver, 15).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-testid='srp-listing-tile']"))
         )
         print("Page reloaded!\n")
-        time.sleep(random.uniform(2, 3))
+        time.sleep(random.uniform(3, 5))  # LONGER: was 2-3
         
 except Exception as e:
     print(f"Error changing distance: {e}")
 
-for page_num in range(1, 4):
+# Only scrape 2 pages to be extra safe
+for page_num in range(1, 3):  # REDUCED: was 1-4
     print(f"\n{'='*50}")
     print(f"Scraping page {page_num}...")
     print(f"{'='*50}")
     
-    # Scroll to top
+    # Scroll to top slowly
     print("Scrolling to top...")
     driver.execute_script("window.scrollTo(0, 0);")
-    time.sleep(random.uniform(1, 2))
+    time.sleep(random.uniform(2, 3))  # LONGER: was 1-2
     
     # Wait for listings
     print("Waiting for listings to appear...")
     listings_found = False
-    for attempt in range(3):  # Try 3 times
+    for attempt in range(3):
         try:
-            WebDriverWait(driver, 10).until(
+            WebDriverWait(driver, 15).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-testid='srp-listing-tile']"))
             )
             listings_found = True
@@ -111,16 +114,15 @@ for page_num in range(1, 4):
             break
         except:
             print(f"Attempt {attempt + 1} failed, trying refresh...")
-            if attempt < 2:  # no refresh
+            if attempt < 2:
                 driver.refresh()
-                time.sleep(5)
+                time.sleep(random.uniform(5, 8))
     
     if not listings_found:
         print("[X] Could not find listings after 3 attempts - stopping")
         break
     
-    # Small wait
-    time.sleep(2)
+    time.sleep(random.uniform(2, 4))  # LONGER: was 2
     
     html = driver.page_source
     soup = BeautifulSoup(html, 'html.parser')
@@ -132,13 +134,15 @@ for page_num in range(1, 4):
         print("[X] No listings in HTML - stopping")
         break
     
+    # Browse more like a real person
     print("Browsing through listings...")
-    for _ in range(random.randint(2, 4)):
+    for _ in range(random.randint(3, 5)):  # MORE SCROLLS: was 2-4
         human_scroll_down(driver)
-        if random.random() < 0.3:
+        if random.random() < 0.4:  # HIGHER CHANCE: was 0.3
             random_mouse_movement(driver)
+        time.sleep(random.uniform(0.5, 1.5))  # Random pauses while "reading"
     
-    time.sleep(random.uniform(1, 2))
+    time.sleep(random.uniform(2, 3))  # LONGER: was 1-2
     
     scraped_count = 0
     for listing in listings:
@@ -172,9 +176,9 @@ for page_num in range(1, 4):
     print(f"\nScraped {scraped_count} valid listings from this page")
     print(f"Total so far: {len(all_listings)}")
     
-
-    if page_num >= 3:
-        print("\nReached target of 3 pages - stopping")
+    # Don't navigate after last page
+    if page_num >= 2:  # CHANGED: was 3
+        print("\nReached target of 2 pages - stopping")
         break
     
     try:
@@ -184,15 +188,17 @@ for page_num in range(1, 4):
         total_height = driver.execute_script("return document.body.scrollHeight")
         current = driver.execute_script("return window.pageYOffset;")
         
+        # Scroll down more gradually
         while current < total_height - viewport_height:
             human_scroll_down(driver)
             current = driver.execute_script("return window.pageYOffset;")
             
-            if random.random() < 0.2: 
+            # More frequent scroll-ups
+            if random.random() < 0.3:  # HIGHER: was 0.2
                 driver.execute_script(f"window.scrollBy(0, -{random.randint(50, 150)});")
-                time.sleep(random.uniform(0.3, 0.6))
+                time.sleep(random.uniform(0.5, 1.0))  # LONGER: was 0.3-0.6
         
-        time.sleep(random.uniform(1, 2))
+        time.sleep(random.uniform(2, 3))  # LONGER: was 1-2
         
         print("Looking for next button...")
         all_buttons = driver.find_elements(By.TAG_NAME, "button")
@@ -214,13 +220,15 @@ for page_num in range(1, 4):
                 print("Next button is disabled - stopping")
                 break
             
+            # Hover over button longer
             ActionChains(driver).move_to_element(next_button).perform()
-            time.sleep(random.uniform(0.5, 1))
+            time.sleep(random.uniform(1, 2))  # LONGER: was 0.5-1
             
             print("Clicking next page...")
             driver.execute_script("arguments[0].click();", next_button)
             
-            wait_time = random.uniform(5, 8)
+            # MUCH LONGER wait between pages
+            wait_time = random.uniform(10, 15)  # MUCH LONGER: was 5-8
             print(f"Waiting {wait_time:.1f}s for next page to load...")
             time.sleep(wait_time)
         else:
