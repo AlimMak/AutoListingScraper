@@ -27,22 +27,7 @@ def human_scroll_down(driver, distance=None):
         driver.execute_script(f"window.scrollBy(0, {step});")
         time.sleep(random.uniform(0.01, 0.03)) 
     
-    
     time.sleep(random.uniform(0.3, 0.7))
-
-def human_scroll_to_element(driver, element):
-    """Scroll to element like a human would"""
-    y = element.location['y']
-    current_y = driver.execute_script("return window.pageYOffset;")
-    distance = y - current_y - 200  # Stop a bit before element
-    
-    if distance > 0:
-
-        while distance > 0:
-            chunk = min(distance, random.randint(400, 600))
-            human_scroll_down(driver, chunk)
-            distance -= chunk
-            time.sleep(random.uniform(0.1, 0.3))
 
 def random_mouse_movement(driver):
     """Move mouse randomly like a human browsing"""
@@ -65,7 +50,6 @@ time.sleep(random.uniform(3, 5))
 
 random_mouse_movement(driver)
 time.sleep(1)
-
 
 try:
     print("\nLooking for distance dropdown...")
@@ -104,21 +88,39 @@ try:
 except Exception as e:
     print(f"Error changing distance: {e}")
 
-for page_num in range(1, 11):
+for page_num in range(1, 4):
     print(f"\n{'='*50}")
     print(f"Scraping page {page_num}...")
     print(f"{'='*50}")
     
+    # Scroll to top
+    print("Scrolling to top...")
     driver.execute_script("window.scrollTo(0, 0);")
     time.sleep(random.uniform(1, 2))
     
-    try:
-        WebDriverWait(driver, 15).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-testid='srp-listing-tile']"))
-        )
-    except:
-        print("[X] Listings took too long to load")
+    # Wait for listings
+    print("Waiting for listings to appear...")
+    listings_found = False
+    for attempt in range(3):  # Try 3 times
+        try:
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-testid='srp-listing-tile']"))
+            )
+            listings_found = True
+            print(f"Listings appeared! (attempt {attempt + 1})")
+            break
+        except:
+            print(f"Attempt {attempt + 1} failed, trying refresh...")
+            if attempt < 2:  # no refresh
+                driver.refresh()
+                time.sleep(5)
+    
+    if not listings_found:
+        print("[X] Could not find listings after 3 attempts - stopping")
         break
+    
+    # Small wait
+    time.sleep(2)
     
     html = driver.page_source
     soup = BeautifulSoup(html, 'html.parser')
@@ -127,7 +129,7 @@ for page_num in range(1, 11):
     print(f"Found {len(listings)} total listings on page")
     
     if len(listings) == 0:
-        print("[X] No listings found")
+        print("[X] No listings in HTML - stopping")
         break
     
     print("Browsing through listings...")
@@ -143,6 +145,12 @@ for page_num in range(1, 11):
         title_tag = listing.find(attrs={'data-cg-ft': 'srp-listing-blade-title'})
         price_tag = listing.find(attrs={'data-cg-ft': 'srp-listing-blade-price'})
         location_span = listing.find('span', string=lambda text: text and ',' in text)
+
+        img_tag = listing.find('img', attrs={'data-cg-ft': 'srp-listing-blade-image'})
+        color = 'N/A'
+        if img_tag and img_tag.get('alt'):
+            alt_text = img_tag.get('alt')
+            color = alt_text.split()[0] if alt_text else 'N/A'
         
         if title_tag and price_tag:
             title = title_tag.text.strip()
@@ -155,13 +163,19 @@ for page_num in range(1, 11):
             all_listings.append({
                 'title': title,
                 'price': price,
+                'color': color,
                 'location': location
             })
             scraped_count += 1
-            print(f"  [+] {title} - {price} - {location}")
+            print(f"  [+] {title} - {price} - {color} - {location}")
     
     print(f"\nScraped {scraped_count} valid listings from this page")
     print(f"Total so far: {len(all_listings)}")
+    
+
+    if page_num >= 3:
+        print("\nReached target of 3 pages - stopping")
+        break
     
     try:
         print("\nScrolling to bottom...")
@@ -180,13 +194,16 @@ for page_num in range(1, 11):
         
         time.sleep(random.uniform(1, 2))
         
+        print("Looking for next button...")
         all_buttons = driver.find_elements(By.TAG_NAME, "button")
+        print(f"Found {len(all_buttons)} buttons total")
         
         next_button = None
         for btn in all_buttons:
             try:
                 if "next page" in btn.text.lower():
                     next_button = btn
+                    print("Found next page button!")
                     break
             except:
                 continue
@@ -194,7 +211,7 @@ for page_num in range(1, 11):
         if next_button:
             is_disabled = next_button.get_attribute("disabled")
             if is_disabled:
-                print("Reached last page!")
+                print("Next button is disabled - stopping")
                 break
             
             ActionChains(driver).move_to_element(next_button).perform()
@@ -204,14 +221,14 @@ for page_num in range(1, 11):
             driver.execute_script("arguments[0].click();", next_button)
             
             wait_time = random.uniform(5, 8)
-            print(f"Waiting {wait_time:.1f}s for next page...")
+            print(f"Waiting {wait_time:.1f}s for next page to load...")
             time.sleep(wait_time)
         else:
-            print("No next button found")
+            print("No next button found - stopping")
             break
             
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error navigating to next page: {e}")
         break
 
 print(f"\n{'='*50}")
@@ -221,10 +238,9 @@ driver.quit()
 
 with open('listings.csv', 'w', newline='', encoding='utf-8') as file:
     writer = csv.writer(file)
-    writer.writerow(['Year and Model', 'Price', 'Location'])
+    writer.writerow(['Year and Model', 'Price', 'Color', 'Location'])
     
     for listing in all_listings:
-        writer.writerow([listing['title'], listing['price'], listing['location']])
+        writer.writerow([listing['title'], listing['price'], listing['color'], listing['location']])
 
 print(f"\n[OK] Done! Got {len(all_listings)} listings saved to listings.csv!")
-      
