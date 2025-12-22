@@ -91,7 +91,7 @@ except Exception as e:
     print(f"Error changing distance: {e}")
 
 # Only scrape 2 pages to be extra safe
-for page_num in range(1, 3):  # REDUCED: was 1-4
+for page_num in range(1, 4):  # REDUCED: was 1-4
     print(f"\n{'='*50}")
     print(f"Scraping page {page_num}...")
     print(f"{'='*50}")
